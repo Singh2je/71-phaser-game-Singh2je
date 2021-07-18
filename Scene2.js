@@ -13,7 +13,6 @@ class Scene2 extends Phaser.Scene {
     this.ship2 = this.add.sprite(config.width / 2, config.height / 2, "ship2");
     this.ship3 = this.add.sprite(config.width / 2 + 50, config.height / 2, "ship3");
 
-    // 3.1 add the ships to a group with physics
     this.enemies = this.physics.add.group();
     this.enemies.add(this.ship1);
     this.enemies.add(this.ship2);
@@ -29,13 +28,6 @@ class Scene2 extends Phaser.Scene {
     this.ship3.setInteractive();
 
     this.input.on('gameobjectdown', this.destroyShip, this);
-
-    // 1.1 remove old text
-    // this.text1 = this.add.text(20, 20, "Playing game", {
-    //   font: "25px Arial",
-    //   fill: "yellow"
-    // });
-
 
     this.physics.world.setBoundsCollision();
 
@@ -81,7 +73,6 @@ class Scene2 extends Phaser.Scene {
 
     this.physics.add.overlap(this.projectiles, this.enemies, this.hitEnemy, null, this);
 
-    // 3.1 Add HUD background
     var graphics = this.add.graphics();
     graphics.fillStyle(0x000000, 1);
     graphics.beginPath();
@@ -94,13 +85,7 @@ class Scene2 extends Phaser.Scene {
     graphics.closePath();
     graphics.fillPath();
 
-    // 2.1 add a score property
     this.score = 0;
-
-    // 1.3 new text using bitmap font
-    //this.scoreLabel = this.add.bitmapText(10, 5, "pixelFont", "SCORE ", 16);
-
-    // 4.3 format the score
     var scoreFormated = this.zeroPad(this.score, 6);
     this.scoreLabel = this.add.bitmapText(10, 5, "pixelFont", "SCORE " + scoreFormated  , 16);
 
@@ -111,27 +96,69 @@ class Scene2 extends Phaser.Scene {
   }
 
   hurtPlayer(player, enemy) {
+
     this.resetShipPos(enemy);
-    player.x = config.width / 2 - 8;
-    player.y = config.height - 64;
+
+    // 4.3 don't hurt the player if it is invincible
+    if(this.player.alpha < 1){
+        return;
+    }
+
+    // 2.2 spawn a explosion animation
+    var explosion = new Explosion(this, player.x, player.y);
+
+    // 2.3 disable the player and hide it
+    player.disableBody(true, true);
+
+    // 3.1 after a time enable the player again
+    this.time.addEvent({
+      delay: 1000,
+      callback: this.resetPlayer,
+      callbackScope: this,
+      loop: false
+    });
+  }
+
+  resetPlayer(){
+    // 3.2 enable the player again
+    var x = config.width / 2 - 8;
+    var y = config.height + 64;
+    this.player.enableBody(true, x, y, true, true);
+
+
+    //
+    // 4.1 make the player transparent to indicate invulnerability
+    this.player.alpha = 0.5;
+    //
+    //
+    // 4.2 move the ship from outside the screen to its original position
+    var tween = this.tweens.add({
+      targets: this.player,
+      y: config.height - 64,
+      ease: 'Power1',
+      duration: 1500,
+      repeat:0,
+      onComplete: function(){
+        this.player.alpha = 1;
+      },
+      callbackScope: this
+    });
   }
 
   hitEnemy(projectile, enemy) {
+
+    // 2.1 spawn an explosion animation
+    var explosion = new Explosion(this, enemy.x, enemy.y);
+
     projectile.destroy();
     this.resetShipPos(enemy);
-    // 2.2 increase score
     this.score += 15;
 
-    // 2.3 update the score scoreLabel
-    //this.scoreLabel.text = "SCORE " + this.score;
-
-    // 4.2 format the score
      var scoreFormated = this.zeroPad(this.score, 6);
      this.scoreLabel.text = "SCORE " + scoreFormated;
   }
 
 
-  // 4.1 zero pad format function
   zeroPad(number, size){
       var stringNumber = String(number);
       while(stringNumber.length < (size || 2)){
@@ -144,6 +171,7 @@ class Scene2 extends Phaser.Scene {
 
 
   update() {
+
 
 
     this.moveShip(this.ship1, 1);
@@ -159,9 +187,10 @@ class Scene2 extends Phaser.Scene {
 
     this.movePlayerManager();
 
-
     if (Phaser.Input.Keyboard.JustDown(this.spacebar)) {
-      this.shootBeam();
+      if(this.player.active){
+          this.shootBeam();
+      }
     }
     for (var i = 0; i < this.projectiles.getChildren().length; i++) {
       var beam = this.projectiles.getChildren()[i];
@@ -172,7 +201,8 @@ class Scene2 extends Phaser.Scene {
   }
 
   shootBeam() {
-    var beam = new Beam(this);
+      var beam = new Beam(this);
+
   }
 
 
